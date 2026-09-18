@@ -544,106 +544,103 @@ elif st.session_state.page == 2:
 
     st.write("### 🎤 Record voice")
 
-   recording = st.audio_input(
-    "Speak naturally for about 10–20 seconds",
-    sample_rate=16000,
-    key="voice_registration_recording",
-)
-
-if recording is not None:
-
-    # Keep a copy of the recorded audio in memory
-    recording_bytes = recording.getvalue()
-
-    st.success("🎙️ Recording captured successfully.")
-
-    # Playback
-    st.audio(
-        recording_bytes,
-        format="audio/wav",
+    recording = st.audio_input(
+        "Speak naturally for about 10–20 seconds",
+        sample_rate=16000,
+        key="voice_registration_recording",
     )
 
-    st.caption(
-        f"Recorded audio size: "
-        f"{len(recording_bytes) / 1024:.1f} KB"
-    )
-    if st.button(
-        "💾 REGISTER SPEAKER",
-        type="primary",
-        use_container_width=True,
-        disabled=not bool(recording and name.strip()),
-    ):
+    if recording is not None:
+        recording_bytes = recording.getvalue()
 
-        temp_path = None
-
-        try:
-            if not HF_TOKEN:
-                raise RuntimeError(
-                    "HF_TOKEN is not configured."
-                )
-
-            clean_name = name.strip()
-
-            if len(clean_name) < 2:
-                raise RuntimeError(
-                    "Please enter a valid speaker name."
-                )
-
-            temp_path = save_uploaded_audio(
-                recording,
-                ".wav",
+        if len(recording_bytes) == 0:
+            st.error("❌ Recording returned no audio data.")
+        else:
+            st.success("🎙️ Recording captured successfully.")
+            st.audio(
+                recording_bytes,
+                format="audio/wav",
+            )
+            st.caption(
+                f"Recorded audio size: "
+                f"{len(recording_bytes) / 1024:.1f} KB"
             )
 
-            waveform = load_16k_mono(temp_path)
+        if st.button(
+            "💾 REGISTER SPEAKER",
+            type="primary",
+            use_container_width=True,
+            disabled=not bool(recording_bytes and name.strip()),
+        ):
+            temp_path = None
 
-            seconds = duration_seconds(waveform)
+            try:
+                if not HF_TOKEN:
+                    raise RuntimeError(
+                        "HF_TOKEN is not configured."
+                    )
 
-            if seconds < 5:
-                raise RuntimeError(
-                    "Please record at least 5 seconds of clear speech."
+                clean_name = name.strip()
+
+                if len(clean_name) < 2:
+                    raise RuntimeError(
+                        "Please enter a valid speaker name."
+                    )
+
+                temp_path = save_uploaded_audio(
+                    recording,
+                    ".wav",
                 )
 
-            with st.spinner(
-                "Loading speaker model and creating voice profile..."
-            ):
-                encoder = load_speaker_encoder()
-                embedding = embedding_from_waveform(
-                    waveform,
-                    encoder,
+                waveform = load_16k_mono(temp_path)
+                seconds = duration_seconds(waveform)
+
+                if seconds < 5:
+                    raise RuntimeError(
+                        "Please record at least 5 seconds of clear speech."
+                    )
+
+                with st.spinner(
+                    "Loading speaker model and creating voice profile..."
+                ):
+                    encoder = load_speaker_encoder()
+                    embedding = embedding_from_waveform(
+                        waveform,
+                        encoder,
+                    )
+
+                profiles = load_profiles()
+
+                profiles[clean_name] = {
+                    "embedding": embedding.tolist(),
+                    "created_at": __import__("datetime").datetime.now().isoformat(
+                        timespec="seconds"
+                    ),
+                    "model": EMBEDDING_MODEL,
+                }
+
+                save_profiles(profiles)
+
+                st.success(
+                    f"✅ {clean_name} voice profile registered."
                 )
 
-            profiles = load_profiles()
+                st.info(
+                    "Only the voice embedding is stored by this app. "
+                    "You can re-register the speaker later to replace the profile."
+                )
 
-            profiles[clean_name] = {
-                "embedding": embedding.tolist(),
-                "created_at": __import__("datetime").datetime.now().isoformat(
-                    timespec="seconds"
-                ),
-                "model": EMBEDDING_MODEL,
-            }
+                st.rerun()
 
-            save_profiles(profiles)
+            except Exception as exc:
+                st.error(f"❌ Registration failed: {exc}")
 
-            st.success(
-                f"✅ {clean_name} voice profile registered."
-            )
-
-            st.info(
-                "Only the voice embedding is stored by this app. "
-                "You can re-register the speaker later to replace the profile."
-            )
-
-            st.rerun()
-
-        except Exception as exc:
-            st.error(f"❌ Registration failed: {exc}")
-
-        finally:
-            if temp_path:
-                try:
-                    os.remove(temp_path)
-                except OSError:
-                    pass
+            finally:
+                if temp_path:
+                    try:
+                        os.remove(temp_path)
+                    except OSError:
+                        pass
 
     st.markdown(
         "</div>",
