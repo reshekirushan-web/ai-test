@@ -1,9 +1,9 @@
 import os
-import base64
 import json
 import math
 import tempfile
 import subprocess
+import shutil
 from pathlib import Path
 
 import streamlit as st
@@ -193,6 +193,10 @@ if not st.session_state.authenticated:
     st.stop()
 
 
+# Optional runtime check: FFmpeg is supplied by packages.txt on Streamlit Cloud.
+# No UI element is added here, so the existing design remains unchanged.
+FFMPEG_PATH = shutil.which("ffmpeg")
+
 # ============================================================
 # PROFILE DATABASE
 # ============================================================
@@ -262,37 +266,54 @@ def save_uploaded_audio(uploaded, suffix=".wav"):
 
 
 def convert_to_wav(input_path):
+    """
+    Convert any supported meeting audio/video format to mono 16 kHz WAV.
+
+    FFmpeg is installed as a system package on Streamlit Cloud through
+    packages.txt, so this function calls the ffmpeg executable directly.
+    """
     output_path = tempfile.NamedTemporaryFile(
         delete=False,
         suffix=".wav",
     ).name
 
+    # Find the FFmpeg executable installed by packages.txt.
+    ffmpeg_path = shutil.which("ffmpeg")
+
+    if not ffmpeg_path:
+        raise RuntimeError(
+            "FFmpeg is not available. Make sure packages.txt contains "
+            "'ffmpeg' and reboot/redeploy the Streamlit app."
+        )
+
     command = [
-        "ffmpeg",
+        ffmpeg_path,
         "-y",
         "-i",
         input_path,
+        "-vn",
         "-ac",
         "1",
         "-ar",
         "16000",
+        "-c:a",
+        "pcm_s16le",
         output_path,
     ]
 
     try:
-        subprocess.run(
+        result = subprocess.run(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            text=True,
             check=True,
         )
-    except FileNotFoundError:
-        raise RuntimeError(
-            "FFmpeg is not installed or is not available in PATH."
-        )
     except subprocess.CalledProcessError as exc:
+        error_detail = (exc.stderr or "").strip()
         raise RuntimeError(
-            "FFmpeg could not convert the audio."
+            "FFmpeg could not convert the audio. "
+            f"Details: {error_detail[-1000:]}"
         ) from exc
 
     return output_path
