@@ -406,6 +406,40 @@ def make_speaker_audio(waveform, segments, max_seconds=20.0):
     return torch.cat(chunks, dim=-1)
 
 
+def play_recorded_audio(recording):
+    """
+    Safely play audio captured using st.audio_input().
+
+    Returns the raw audio bytes when valid, otherwise None.
+    """
+    if recording is None:
+        return None
+
+    try:
+        audio_bytes = recording.getvalue()
+
+        if not audio_bytes:
+            st.error("❌ No audio data was received.")
+            return None
+
+        st.success("🎙️ Recording captured successfully.")
+
+        st.audio(
+            audio_bytes,
+            format="audio/wav",
+        )
+
+        st.caption(
+            f"Audio size: {len(audio_bytes) / 1024:.1f} KB"
+        )
+
+        return audio_bytes
+
+    except Exception as exc:
+        st.error(f"❌ Audio playback error: {exc}")
+        return None
+
+
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -550,22 +584,9 @@ elif st.session_state.page == 2:
         key="voice_registration_recording",
     )
 
-    if recording is not None:
-        recording_bytes = recording.getvalue()
+    recording_bytes = play_recorded_audio(recording)
 
-        if len(recording_bytes) == 0:
-            st.error("❌ Recording returned no audio data.")
-        else:
-            st.success("🎙️ Recording captured successfully.")
-            st.audio(
-                recording_bytes,
-                format="audio/wav",
-            )
-            st.caption(
-                f"Recorded audio size: "
-                f"{len(recording_bytes) / 1024:.1f} KB"
-            )
-
+    if recording_bytes:
         if st.button(
             "💾 REGISTER SPEAKER",
             type="primary",

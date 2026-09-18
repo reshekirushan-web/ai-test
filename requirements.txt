@@ -4,3 +4,4 @@ torch
 torchaudio
 speechbrain
 pyannote.audio
+ffmpeg
