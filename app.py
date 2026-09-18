@@ -1,4 +1,5 @@
 import os
+import base64
 import json
 import math
 import tempfile
@@ -408,9 +409,8 @@ def make_speaker_audio(waveform, segments, max_seconds=20.0):
 
 def play_recorded_audio(recording):
     """
-    Safely play audio captured using st.audio_input().
-
-    Returns the raw audio bytes when valid, otherwise None.
+    Capture and play microphone audio using a native HTML5 browser
+    audio player. Returns the captured bytes for registration.
     """
     if recording is None:
         return None
@@ -419,18 +419,27 @@ def play_recorded_audio(recording):
         audio_bytes = recording.getvalue()
 
         if not audio_bytes:
-            st.error("❌ No audio data was received.")
+            st.error("❌ No audio data was received from the microphone.")
             return None
 
         st.success("🎙️ Recording captured successfully.")
 
-        st.audio(
-            audio_bytes,
-            format="audio/wav",
-        )
+        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+        audio_html = f"""
+        <audio controls preload="auto" style="width:100%; height:54px;">
+            <source
+                src="data:audio/wav;base64,{audio_base64}"
+                type="audio/wav"
+            >
+            Your browser does not support WAV audio playback.
+        </audio>
+        """
+
+        st.markdown(audio_html, unsafe_allow_html=True)
 
         st.caption(
-            f"Audio size: {len(audio_bytes) / 1024:.1f} KB"
+            f"🎧 Recording size: {len(audio_bytes) / 1024:.1f} KB"
         )
 
         return audio_bytes
@@ -591,14 +600,14 @@ elif st.session_state.page == 2:
             "💾 REGISTER SPEAKER",
             type="primary",
             use_container_width=True,
-            disabled=not bool(recording_bytes and name.strip()),
         ):
             temp_path = None
 
             try:
                 if not HF_TOKEN:
                     raise RuntimeError(
-                        "HF_TOKEN is not configured."
+                        "HF_TOKEN is not configured. "
+                        "Add it to Streamlit Secrets."
                     )
 
                 clean_name = name.strip()
