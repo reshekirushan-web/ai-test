@@ -1,0 +1,6 @@
+streamlit
+google-genai
+torch
+torchaudio
+speechbrain
+pyannote.audio
