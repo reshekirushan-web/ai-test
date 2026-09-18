@@ -544,14 +544,29 @@ elif st.session_state.page == 2:
 
     st.write("### 🎤 Record voice")
 
-    recording = st.audio_input(
-        "Speak naturally for about 10–20 seconds",
-        sample_rate=16000,
+   recording = st.audio_input(
+    "Speak naturally for about 10–20 seconds",
+    sample_rate=16000,
+    key="voice_registration_recording",
+)
+
+if recording is not None:
+
+    # Keep a copy of the recorded audio in memory
+    recording_bytes = recording.getvalue()
+
+    st.success("🎙️ Recording captured successfully.")
+
+    # Playback
+    st.audio(
+        recording_bytes,
+        format="audio/wav",
     )
 
-    if recording:
-        st.audio(recording)
-
+    st.caption(
+        f"Recorded audio size: "
+        f"{len(recording_bytes) / 1024:.1f} KB"
+    )
     if st.button(
         "💾 REGISTER SPEAKER",
         type="primary",
