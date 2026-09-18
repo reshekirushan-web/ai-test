@@ -1,7 +1,9 @@
 streamlit
-google-genai
 torch
 torchaudio
-speechbrain
+google-genai
 pyannote.audio
-numba
+speechbrain
+transformers
+huggingface_hub
+soundfile
