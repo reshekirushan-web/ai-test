@@ -409,8 +409,8 @@ def make_speaker_audio(waveform, segments, max_seconds=20.0):
 
 def play_recorded_audio(recording):
     """
-    Capture and play microphone audio using a native HTML5 browser
-    audio player. Returns the captured bytes for registration.
+    Display the microphone recording using Streamlit's native
+    audio player and return the original recording object.
     """
     if recording is None:
         return None
@@ -424,25 +424,15 @@ def play_recorded_audio(recording):
 
         st.success("🎙️ Recording captured successfully.")
 
-        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
-
-        audio_html = f"""
-        <audio controls preload="auto" style="width:100%; height:54px;">
-            <source
-                src="data:audio/wav;base64,{audio_base64}"
-                type="audio/wav"
-            >
-            Your browser does not support WAV audio playback.
-        </audio>
-        """
-
-        st.markdown(audio_html, unsafe_allow_html=True)
+        # Use Streamlit's native audio player instead of manually
+        # constructing a Base64 HTML audio element.
+        st.audio(recording, format="audio/wav")
 
         st.caption(
             f"🎧 Recording size: {len(audio_bytes) / 1024:.1f} KB"
         )
 
-        return audio_bytes
+        return recording
 
     except Exception as exc:
         st.error(f"❌ Audio playback error: {exc}")
@@ -593,9 +583,9 @@ elif st.session_state.page == 2:
         key="voice_registration_recording",
     )
 
-    recording_bytes = play_recorded_audio(recording)
+    recording_object = play_recorded_audio(recording)
 
-    if recording_bytes:
+    if recording_object:
         if st.button(
             "💾 REGISTER SPEAKER",
             type="primary",
@@ -618,7 +608,7 @@ elif st.session_state.page == 2:
                     )
 
                 temp_path = save_uploaded_audio(
-                    recording,
+                    recording_object,
                     ".wav",
                 )
 
